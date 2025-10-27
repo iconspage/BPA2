@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import requests
 import os
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
@@ -9,10 +10,10 @@ ACCESS_TOKEN = "EAASZCI1ZAownwBP0MuUtXDEAXwEbFK9bZChic3sruOcp7nbmD3pOlLqx52xE7aS
 VERIFY_TOKEN = "mywhatsbot123"
 PHONE_NUMBER_ID = "884166421438641"
 
-# 🔹 OpenAI API key (stored in environment or directly for testing)
+# 🔹 OpenAI API key
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-REPLACE_WITH_YOURS")
 
-# ✅ Verify webhook (Meta uses this once during setup)
+# ✅ Verify webhook (Meta setup)
 @app.route("/webhook", methods=["GET"])
 def verify():
     verify_token = request.args.get("hub.verify_token")
@@ -29,7 +30,6 @@ def webhook():
     print("📩 Incoming data:", data)
 
     try:
-        # Check if there’s a message
         messages = data["entry"][0]["changes"][0]["value"].get("messages")
         if not messages:
             return jsonify(success=True)
@@ -78,24 +78,37 @@ def send_message(to, message):
         print("❌ Failed to send message:", e)
 
 
-# ✅ ChatGPT integration (AI responses)
+# ✅ ChatGPT integration (with live website fetching)
 def chat_with_ai(prompt):
     try:
+        # Try fetching live info from Bucch Energy’s website
+        try:
+            site_url = "https://bucchenergy.com"  # ← change to your actual website
+            html = requests.get(site_url, timeout=10).text
+            soup = BeautifulSoup(html, "html.parser")
+
+            # Extract readable text from the website
+            website_text = ' '.join(p.get_text() for p in soup.find_all("p"))[:3000]
+        except Exception as e:
+            print("⚠️ Website fetch failed:", e)
+            website_text = "(Could not fetch latest site data.)"
+
         headers = {
             "Authorization": f"Bearer {OPENAI_API_KEY}",
             "Content-Type": "application/json"
         }
 
         body = {
-            "model": "gpt-4o-mini",  # lightweight, fast, and smart
+            "model": "gpt-4o-mini",
             "messages": [
                 {
                     "role": "system",
                     "content": (
-                        "You are PBA.Bucch — a friendly and professional virtual assistant "
-                        "for Bucch Energy, a company that provides clean energy and battery solutions. "
-                        "You help users with product info, battery inquiries, and customer service. "
-                        "Keep responses short, polite, and natural."
+                        "You are PBA.Bucch — a friendly and professional assistant for Bucch Energy. "
+                        "Provide accurate and updated info, including from real-world sources when available. "
+                        "Use the following website data as your knowledge reference:\n\n"
+                        f"{website_text}\n\n"
+                        "If the site text doesn’t contain the needed info, respond politely with what you know and suggest visiting the website."
                     )
                 },
                 {"role": "user", "content": prompt}
@@ -111,7 +124,7 @@ def chat_with_ai(prompt):
 
     except Exception as e:
         print("⚙️ AI error:", e)
-        return "⚡ Sorry, I’m having trouble replying right now — please try again!"
+        return "⚡ Sorry, I’m having trouble getting the latest info — please try again!"
 
 
 # ✅ Run Flask app
