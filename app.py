@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 import os
 
+# ✅ Use correct name (this was the main reason it didn’t respond)
 app = Flask(__name__)
 
 # 🔹 WhatsApp Config (your real details)
@@ -15,14 +16,21 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # ✅ Webhook Verification (Meta checks this once)
 @app.route("/webhook", methods=["GET"])
 def verify():
-    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
-        return request.args.get("hub.challenge")
-    return "Verification failed", 403
+    verify_token = request.args.get("hub.verify_token")
+    challenge = request.args.get("hub.challenge")
+
+    if verify_token == VERIFY_TOKEN:
+        print("✅ Webhook verified successfully.")
+        return challenge
+    else:
+        print("❌ Webhook verification failed.")
+        return "Verification failed", 403
 
 
 # ✅ Handle Incoming WhatsApp Messages
 @app.route("/webhook", methods=["POST"])
 def webhook():
+    print("✅ Webhook reached!")
     data = request.get_json()
     print("Incoming data:", data)
 
@@ -32,29 +40,20 @@ def webhook():
             message = messages[0]
             from_number = message["from"]
 
-            # Handle text messages
+            # Handle text messages only
             if message.get("type") == "text":
-                text = message["text"]["body"].strip().lower()
+                text = message["text"]["body"]
                 print(f"Message from {from_number}: {text}")
 
-                # 🔹 Greeting detection
-                greetings = ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"]
-                if any(greet in text for greet in greetings):
-                    reply_text = (
-                        "Hello there! 👋 I'm *PBA.Bucch*, your virtual assistant from *Bucch Energy Limited*. ⚡\n\n"
-                        "I’m here to assist you with information about our petroleum products, lubricants, "
-                        "and clean energy solutions — including Base Oil, PMS, DPK, AGO, and LPG.\n\n"
-                        "How may I assist you today?"
-                    )
-                    send_message(from_number, reply_text)
-                else:
-                    # Normal AI reply
-                    ai_reply = chat_with_ai(text)
-                    send_message(from_number, ai_reply)
+                # Get AI-generated reply
+                ai_reply = chat_with_ai(text)
+
+                # Send back to user
+                send_message(from_number, ai_reply)
             else:
                 send_message(from_number, "⚠️ I can only process text messages for now.")
     except Exception as e:
-        print("Error:", e)
+        print("❌ Error handling webhook:", e)
 
     return jsonify(success=True)
 
@@ -74,10 +73,10 @@ def send_message(to, message):
     }
 
     response = requests.post(url, headers=headers, json=payload)
-    print("WhatsApp API response:", response.status_code, response.text)
+    print("📤 WhatsApp API response:", response.status_code, response.text)
 
 
-# ✅ ChatGPT AI Integration (Now Bucch Energy Assistant Personality)
+# ✅ ChatGPT AI Integration (PBA.Bucch Personality)
 def chat_with_ai(prompt):
     try:
         headers = {
@@ -108,14 +107,17 @@ def chat_with_ai(prompt):
 
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body)
         data = response.json()
+        print("🤖 OpenAI API response:", data)  # Debug log
+
         reply = data["choices"][0]["message"]["content"]
-        return reply
+        return reply + "\n\n— PBA.Bucch ⚡"
 
     except Exception as e:
-        print("AI error:", e)
+        print("❌ AI error:", e)
         return "⚡ Sorry, I’m having a little trouble replying right now — please try again!"
 
 
 # ✅ Run Flask app
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    print("🚀 Starting PBA.Bucch Flask server...")
+    app.run(host="0.0.0.0", port=5000, debug=True)
