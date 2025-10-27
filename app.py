@@ -34,14 +34,23 @@ def webhook():
 
             # Handle text messages
             if message.get("type") == "text":
-                text = message["text"]["body"]
+                text = message["text"]["body"].strip().lower()
                 print(f"Message from {from_number}: {text}")
 
-                # Get AI-generated reply
-                ai_reply = chat_with_ai(text)
-
-                # Send back to user
-                send_message(from_number, ai_reply)
+                # 🔹 Greeting detection
+                greetings = ["hi", "hello", "hey", "good morning", "good afternoon", "good evening"]
+                if any(greet in text for greet in greetings):
+                    reply_text = (
+                        "Hello there! 👋 I'm *PBA.Bucch*, your virtual assistant from *Bucch Energy Limited*. ⚡\n\n"
+                        "I’m here to assist you with information about our petroleum products, lubricants, "
+                        "and clean energy solutions — including Base Oil, PMS, DPK, AGO, and LPG.\n\n"
+                        "How may I assist you today?"
+                    )
+                    send_message(from_number, reply_text)
+                else:
+                    # Normal AI reply
+                    ai_reply = chat_with_ai(text)
+                    send_message(from_number, ai_reply)
             else:
                 send_message(from_number, "⚠️ I can only process text messages for now.")
     except Exception as e:
@@ -68,7 +77,7 @@ def send_message(to, message):
     print("WhatsApp API response:", response.status_code, response.text)
 
 
-# ✅ ChatGPT AI Integration (Now PBA.Bucch Personality)
+# ✅ ChatGPT AI Integration (Now Bucch Energy Assistant Personality)
 def chat_with_ai(prompt):
     try:
         headers = {
@@ -82,11 +91,15 @@ def chat_with_ai(prompt):
                 {
                     "role": "system",
                     "content": (
-                        "You are PBA.Bucch — a friendly and professional customer service assistant "
-                        "for Bucch Energy, a company that provides clean energy products and battery solutions. "
-                        "You help customers with product information, availability, and orders. "
-                        "Always reply naturally and politely. "
-                        "Never mention OpenAI, ChatGPT, or AI — you are just Bucch Energy’s virtual assistant."
+                        "You are PBA.Bucch — a friendly, professional customer-service assistant for "
+                        "Bucch Energy Limited. Bucch Energy is a Nigerian oil & gas company specialising in "
+                        "high-quality base oils and premium petroleum products (PMS, DPK, AGO, LPG) and manufacturing lubricants. "
+                        "Your mission: help customers with product information, availability, orders, pricing, and delivery timelines.\n\n"
+                        "Use the tone and values of the real company: Reliability, Innovation, Integrity, Environmental Responsibility, "
+                        "Customer Focus, and Safety. Speak like an expert but approachable company rep — never like a bot.\n\n"
+                        "Always reply naturally and politely. Never mention OpenAI, ChatGPT, or AI — you are Bucch Energy’s official virtual assistant.\n\n"
+                        "If unsure about a question, say you’ll check and get back to the customer rather than inventing info.\n\n"
+                        "End every response with this signature: “— PBA.Bucch ⚡”"
                     )
                 },
                 {"role": "user", "content": prompt}
@@ -96,7 +109,7 @@ def chat_with_ai(prompt):
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body)
         data = response.json()
         reply = data["choices"][0]["message"]["content"]
-        return reply + "\n\n— PBA.Bucch ⚡"
+        return reply
 
     except Exception as e:
         print("AI error:", e)
