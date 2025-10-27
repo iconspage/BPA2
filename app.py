@@ -1,14 +1,18 @@
 from flask import Flask, request, jsonify
 import requests
+import os
 
 app = Flask(__name__)
 
 # 🔹 Replace these with your actual details
-ACCESS_TOKEN = "EAASZCI1ZAownwBP2Pv81sVieaiJvAIf0RN92JL8QeB43ZBtFDNhf4s5kZCvoRYxqOks7AWKFYTHA41jgPeOCLMkG8pkUeWHXkCNEZB3Seyx3YOt9vg3IzeGd6R35Bn933eTamVaVllGYr8ZCKrqbEnNWX9LJ3m6i22pJdq6ODVSm5khvZCivbEZBZB4UWt6P9Jo6HZAIXgLNCSHTHENjZBO1ZAROrZBAjCZCBuQj1BMXFYlfKZB1VOCM4BW8e7aZCeQ0qHjOMqJUmXsjPpLxa4bIZB5iZAXKutZBecL"  # your WhatsApp Cloud API token
+ACCESS_TOKEN = "EAASZCI1ZAownwBP2Pv81sVieaiJvAIf0RN92JL8QeB43ZBtFDNhf4s5kZCvoRYxqOks7AWKFYTHA41jgPeOCLMkG8pkUeWHXkCNEZB3Seyx3YOt9vg3IzeGd6R35Bn933eTamVaVllGYr8ZCKrqbEnNWX9LJ3m6i22pJdq6ODVSm5khvZCivbEZBZB4UWt6P9Jo6HZAIXgLNCSHTHENjZBO1ZAROrZBAjCZCBuQj1BMXFYlfKZB1VOCM4BW8e7aZCeQ0qHjOMqJUmXsjPpLxa4bIZB5iZAXKutZBecL"
 VERIFY_TOKEN = "mywhatsbot123"
 PHONE_NUMBER_ID = "884166421438641"
 
-# ✅ Verify webhook (Meta uses this once during setup)
+# 🧠 Your OpenAI API key
+OPENAI_API_KEY = "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"
+
+# ✅ Verify webhook
 @app.route("/webhook", methods=["GET"])
 def verify():
     verify_token = request.args.get("hub.verify_token")
@@ -30,15 +34,13 @@ def webhook():
             message = messages[0]
             from_number = message["from"]
 
-            # Handle text messages only
             if message.get("type") == "text":
                 text = message["text"]["body"]
                 print(f"Message from {from_number}: {text}")
 
-                # Just reply something simple (can also echo)
-                reply_text = f"You said: {text}"
-                send_message(from_number, reply_text)
-
+                # 💬 Get AI-generated reply
+                ai_reply = chat_with_ai(text)
+                send_message(from_number, ai_reply)
             else:
                 send_message(from_number, "I can only read text messages for now 🤖")
 
@@ -48,7 +50,32 @@ def webhook():
     return jsonify(success=True)
 
 
-# ✅ Send message to WhatsApp
+# 🧠 ChatGPT (OpenAI) integration
+def chat_with_ai(prompt):
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": "You are a helpful WhatsApp assistant."},
+            {"role": "user", "content": prompt}
+        ]
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response_json = response.json()
+        ai_message = response_json["choices"][0]["message"]["content"]
+        return ai_message
+    except Exception as e:
+        print("OpenAI API error:", e)
+        return "Sorry, I’m having trouble thinking right now 🤖"
+
+
+# ✅ Send message back to WhatsApp
 def send_message(to, message):
     url = f"https://graph.facebook.com/v24.0/{PHONE_NUMBER_ID}/messages"
     headers = {
