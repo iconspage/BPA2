@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 import requests
 
-app = Flask(_name_)
+app = Flask(__name__)
 
-# 🔹 Replace these with your actual details here
+# 🔹 Replace these with your actual details
 ACCESS_TOKEN = "EAASZCI1ZAownwBP2Pv81sVieaiJvAIf0RN92JL8QeB43ZBtFDNhf4s5kZCvoRYxqOks7AWKFYTHA41jgPeOCLMkG8pkUeWHXkCNEZB3Seyx3YOt9vg3IzeGd6R35Bn933eTamVaVllGYr8ZCKrqbEnNWX9LJ3m6i22pJdq6ODVSm5khvZCivbEZBZB4UWt6P9Jo6HZAIXgLNCSHTHENjZBO1ZAROrZBAjCZCBuQj1BMXFYlfKZB1VOCM4BW8e7aZCeQ0qHjOMqJUmXsjPpLxa4bIZB5iZAXKutZBecL"  # your WhatsApp Cloud API token
 VERIFY_TOKEN = "mywhatsbot123"
 PHONE_NUMBER_ID = "884166421438641"
@@ -67,5 +67,5 @@ def send_message(to, message):
 
 
 # ✅ Run Flask app
-if _name_ == "_main_":
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
