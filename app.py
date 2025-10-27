@@ -9,7 +9,7 @@ ACCESS_TOKEN = "EAASZCI1ZAownwBP2Pv81sVieaiJvAIf0RN92JL8QeB43ZBtFDNhf4s5kZCvoRYx
 VERIFY_TOKEN = "mywhatsbot123"
 PHONE_NUMBER_ID = "884166421438641"
 
-# 🔹 OpenAI key stored securely in Render or locally
+# 🔹 OpenAI key stored securely (in Render or local environment)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # ✅ Webhook Verification (Meta checks this once)
@@ -68,25 +68,39 @@ def send_message(to, message):
     print("WhatsApp API response:", response.status_code, response.text)
 
 
-# ✅ ChatGPT AI Integration
+# ✅ ChatGPT AI Integration (Now PBA.Bucch Personality)
 def chat_with_ai(prompt):
     try:
         headers = {
             "Authorization": f"Bearer {OPENAI_API_KEY}",
             "Content-Type": "application/json"
         }
+
         body = {
             "model": "gpt-4o-mini",
-            "messages": [{"role": "user", "content": prompt}]
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are PBA.Bucch — a friendly and professional customer service assistant "
+                        "for Bucch Energy, a company that provides clean energy products and battery solutions. "
+                        "You help customers with product information, availability, and orders. "
+                        "Always reply naturally and politely. "
+                        "Never mention OpenAI, ChatGPT, or AI — you are just Bucch Energy’s virtual assistant."
+                    )
+                },
+                {"role": "user", "content": prompt}
+            ]
         }
 
         response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body)
         data = response.json()
         reply = data["choices"][0]["message"]["content"]
-        return reply
+        return reply + "\n\n— PBA.Bucch ⚡"
+
     except Exception as e:
         print("AI error:", e)
-        return "🤖 Sorry, I had trouble thinking of a reply!"
+        return "⚡ Sorry, I’m having a little trouble replying right now — please try again!"
 
 
 # ✅ Run Flask app
