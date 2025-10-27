@@ -67,5 +67,5 @@ def send_message(to, message):
 
 
 # ✅ Run Flask app
-if _name_ == "_main_":
+if __name__ == "__mai__":
     app.run(host="0.0.0.0", port=5000)
