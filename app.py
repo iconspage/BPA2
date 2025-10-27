@@ -1,26 +1,24 @@
 from flask import Flask, request, jsonify
 import requests
-import os
 
-app = Flask(__name__)  # ✅ double underscores
+app = Flask(_name_)
 
-# 🔹 WhatsApp Config (your real details)
-ACCESS_TOKEN = "EAASZCI1ZAownwBP2Pv81sVieaiJvAIf0RN92JL8QeB43ZBtFDNhf4s5kZCvoRYxqOks7AWKFYTHA41jgPeOCLMkG8pkUeWHXkCNEZB3Seyx3YOt9vg3IzeGd6R35Bn933eTamVaVllGYr8ZCKrqbEnNWX9LJ3m6i22pJdq6ODVSm5khvZCivbEZBZB4UWt6P9Jo6HZAIXgLNCSHTHENjZBO1ZAROrZBAjCZCBuQj1BMXFYlfKZB1VOCM4BW8e7aZCeQ0qHjOMqJUmXsjPpLxa4bIZB5iZAXKutZBecL"
+# 🔹 Replace these with your actual details
+ACCESS_TOKEN = "EAASZCI1ZAownwBP2Pv81sVieaiJvAIf0RN92JL8QeB43ZBtFDNhf4s5kZCvoRYxqOks7AWKFYTHA41jgPeOCLMkG8pkUeWHXkCNEZB3Seyx3YOt9vg3IzeGd6R35Bn933eTamVaVllGYr8ZCKrqbEnNWX9LJ3m6i22pJdq6ODVSm5khvZCivbEZBZB4UWt6P9Jo6HZAIXgLNCSHTHENjZBO1ZAROrZBAjCZCBuQj1BMXFYlfKZB1VOCM4BW8e7aZCeQ0qHjOMqJUmXsjPpLxa4bIZB5iZAXKutZBecL"  # your WhatsApp Cloud API token
 VERIFY_TOKEN = "mywhatsbot123"
 PHONE_NUMBER_ID = "884166421438641"
 
-# 🔹 OpenAI key stored securely (in Render or local environment)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# ✅ Webhook Verification (Meta checks this once)
+# ✅ Verify webhook (Meta uses this once during setup)
 @app.route("/webhook", methods=["GET"])
 def verify():
-    if request.args.get("hub.verify_token") == VERIFY_TOKEN:
-        return request.args.get("hub.challenge")
+    verify_token = request.args.get("hub.verify_token")
+    challenge = request.args.get("hub.challenge")
+    if verify_token == VERIFY_TOKEN:
+        return challenge
     return "Verification failed", 403
 
 
-# ✅ Handle Incoming WhatsApp Messages
+# ✅ Handle incoming WhatsApp messages
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
@@ -32,25 +30,25 @@ def webhook():
             message = messages[0]
             from_number = message["from"]
 
-            # Handle text messages
+            # Handle text messages only
             if message.get("type") == "text":
                 text = message["text"]["body"]
                 print(f"Message from {from_number}: {text}")
 
-                # Get AI-generated reply
-                ai_reply = chat_with_ai(text)
+                # Just reply something simple (can also echo)
+                reply_text = f"You said: {text}"
+                send_message(from_number, reply_text)
 
-                # Send back to user
-                send_message(from_number, ai_reply)
             else:
-                send_message(from_number, "⚠ I can only process text messages for now.")
+                send_message(from_number, "I can only read text messages for now 🤖")
+
     except Exception as e:
-        print("Error:", e)
+        print("Error handling webhook:", e)
 
     return jsonify(success=True)
 
 
-# ✅ Send Message Function
+# ✅ Send message to WhatsApp
 def send_message(to, message):
     url = f"https://graph.facebook.com/v24.0/{PHONE_NUMBER_ID}/messages"
     headers = {
@@ -68,41 +66,6 @@ def send_message(to, message):
     print("WhatsApp API response:", response.status_code, response.text)
 
 
-# ✅ ChatGPT AI Integration (Now PBA.Bucch Personality)
-def chat_with_ai(prompt):
-    try:
-        headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}",
-            "Content-Type": "application/json"
-        }
-
-        body = {
-            "model": "gpt-4o-mini",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are PBA.Bucch — a friendly and professional customer service assistant "
-                        "for Bucch Energy, a company that provides clean energy products and battery solutions. "
-                        "You help customers with product information, availability, and orders. "
-                        "Always reply naturally and politely. "
-                        "Never mention OpenAI, ChatGPT, or AI — you are just Bucch Energy’s virtual assistant."
-                    )
-                },
-                {"role": "user", "content": prompt}
-            ]
-        }
-
-        response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=body)
-        data = response.json()
-        reply = data["choices"][0]["message"]["content"]
-        return reply + "\n\n— PBA.Bucch ⚡"
-
-    except Exception as e:
-        print("AI error:", e)
-        return "⚡ Sorry, I’m having a little trouble replying right now — please try again!"
-
-
 # ✅ Run Flask app
-if __name__ == "__main__":  # ✅ double underscores
+if _name_ == "_main_":
     app.run(host="0.0.0.0", port=5000)
