@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import requests
 import os
 
-app = Flask(__name__)  # ✅ Corrected double underscores
+app = Flask(__name__)  # ✅ double underscores
 
 # 🔹 WhatsApp Config (your real details)
 ACCESS_TOKEN = "EAASZCI1ZAownwBP2Pv81sVieaiJvAIf0RN92JL8QeB43ZBtFDNhf4s5kZCvoRYxqOks7AWKFYTHA41jgPeOCLMkG8pkUeWHXkCNEZB3Seyx3YOt9vg3IzeGd6R35Bn933eTamVaVllGYr8ZCKrqbEnNWX9LJ3m6i22pJdq6ODVSm5khvZCivbEZBZB4UWt6P9Jo6HZAIXgLNCSHTHENjZBO1ZAROrZBAjCZCBuQj1BMXFYlfKZB1VOCM4BW8e7aZCeQ0qHjOMqJUmXsjPpLxa4bIZB5iZAXKutZBecL"
@@ -104,5 +104,5 @@ def chat_with_ai(prompt):
 
 
 # ✅ Run Flask app
-if __name__ == "__main__":  # ✅ Corrected double underscores
+if __name__ == "__main__":  # ✅ double underscores
     app.run(host="0.0.0.0", port=5000)
