@@ -1,10 +1,10 @@
 from flask import Flask, request, jsonify
 import requests
 
-app = Flask(_name_)
+app = Flask(__name__)  # ✅ fixed: double underscores
 
 # 🔹 Replace these with your actual details
-ACCESS_TOKEN = "EAASZCI1ZAownwBP2Pv81sVieaiJvAIf0RN92JL8QeB43ZBtFDNhf4s5kZCvoRYxqOks7AWKFYTHA41jgPeOCLMkG8pkUeWHXkCNEZB3Seyx3YOt9vg3IzeGd6R35Bn933eTamVaVllGYr8ZCKrqbEnNWX9LJ3m6i22pJdq6ODVSm5khvZCivbEZBZB4UWt6P9Jo6HZAIXgLNCSHTHENjZBO1ZAROrZBAjCZCBuQj1BMXFYlfKZB1VOCM4BW8e7aZCeQ0qHjOMqJUmXsjPpLxa4bIZB5iZAXKutZBecL"  # your WhatsApp Cloud API token
+ACCESS_TOKEN = "EAASZCI1ZAownwBP2Pv81sVieaiJvAIf0RN92JL8QeB43ZBtFDNhf4s5kZCvoRYxqOks7AWKFYTHA41jgPeOCLMkG8pkUeWHXkCNEZB3Seyx3YOt9vg3IzeGd6R35Bn933eTamVaVllGYr8ZCKrqbEnNWX9LJ3m6i22pJdq6ODVSm5khvZCivbEZBZB4UWt6P9Jo6HZAIXgLNCSHTHENjZBO1ZAROrZBAjCZCBuQj1BMXFYlfKZB1VOCM4BW8e7aZCeQ0qHjOMqJUmXsjPpLxa4bIZB5iZAXKutZBecL"
 VERIFY_TOKEN = "mywhatsbot123"
 PHONE_NUMBER_ID = "884166421438641"
 
@@ -38,7 +38,6 @@ def webhook():
                 # Just reply something simple (can also echo)
                 reply_text = f"You said: {text}"
                 send_message(from_number, reply_text)
-
             else:
                 send_message(from_number, "I can only read text messages for now 🤖")
 
@@ -67,5 +66,5 @@ def send_message(to, message):
 
 
 # ✅ Run Flask app
-if __name__ == "__mai__":
+if __name__ == "__main__":  # ✅ fixed: double underscores
     app.run(host="0.0.0.0", port=5000)
