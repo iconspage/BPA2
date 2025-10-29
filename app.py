@@ -13,6 +13,9 @@ PHONE_NUMBER_ID = "884166421438641"
 # 🔹 OpenAI API key
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-REPLACE_WITH_YOURS")
 
+# 🔹 Memory storage for user chat history
+chat_history = {}
+
 # ✅ Verify webhook (Meta setup)
 @app.route("/webhook", methods=["GET"])
 def verify():
@@ -42,8 +45,8 @@ def webhook():
             user_text = message["text"]["body"]
             print(f"💬 Message from {from_number}: {user_text}")
 
-            # Generate AI response
-            ai_reply = chat_with_ai(user_text)
+            # Generate AI response (with memory)
+            ai_reply = chat_with_ai(user_text, from_number)
 
             # Send reply back to user
             send_message(from_number, ai_reply)
@@ -78,17 +81,22 @@ def send_message(to, message):
         print("❌ Failed to send message:", e)
 
 
-# ✅ ChatGPT integration (with live website fetching)
-def chat_with_ai(prompt):
+# ✅ ChatGPT integration (with memory + live website fetching)
+def chat_with_ai(prompt, user_id="default_user"):
     try:
+        # Maintain chat history
+        if user_id not in chat_history:
+            chat_history[user_id] = []
+
+        # Add user message
+        chat_history[user_id].append({"role": "user", "content": prompt})
+
         # Try fetching live info from Bucch Energy’s website
         try:
             site_url = "https://bucchenergy.com"  # ← change to your actual website
             html = requests.get(site_url, timeout=10).text
             soup = BeautifulSoup(html, "html.parser")
-
-            # Extract readable text from the website
-            website_text = ' '.join(p.get_text() for p in soup.find_all("p"))[:3000]
+            website_text = soup.get_text(separator=' ', strip=True)[:3000]
         except Exception as e:
             print("⚠️ Website fetch failed:", e)
             website_text = "(Could not fetch latest site data.)"
@@ -98,21 +106,24 @@ def chat_with_ai(prompt):
             "Content-Type": "application/json"
         }
 
+        # Combine system message + chat memory
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are PBA.Bucch — a friendly and professional assistant for Bucch Energy. "
+                    "Provide accurate and updated info, including from real-world sources when available. "
+                    "Use the following website data as your knowledge reference:\n\n"
+                    f"{website_text}\n\n"
+                    "If the site text doesn’t contain the needed info, respond politely with what you know "
+                    "and suggest visiting the website."
+                )
+            }
+        ] + chat_history[user_id]
+
         body = {
             "model": "gpt-4o-mini",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are PBA.Bucch — a friendly and professional assistant for Bucch Energy. "
-                        "Provide accurate and updated info, including from real-world sources when available. "
-                        "Use the following website data as your knowledge reference:\n\n"
-                        f"{website_text}\n\n"
-                        "If the site text doesn’t contain the needed info, respond politely with what you know and suggest visiting the website."
-                    )
-                },
-                {"role": "user", "content": prompt}
-            ]
+            "messages": messages
         }
 
         response = requests.post("https://api.openai.com/v1/chat/completions",
@@ -120,6 +131,10 @@ def chat_with_ai(prompt):
         data = response.json()
 
         reply = data["choices"][0]["message"]["content"]
+
+        # Save AI reply to memory
+        chat_history[user_id].append({"role": "assistant", "content": reply})
+
         return reply.strip() + "\n\n— PBA.Bucch ⚡"
 
     except Exception as e:
