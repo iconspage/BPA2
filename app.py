@@ -19,10 +19,12 @@ user_memory = {}
 
 # 🔹 Product image mapping
 product_links = {
-    "lubricant": "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Prouct-shoot1017-scaled.jpg",
+    "lubricant 1": "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Prouct-shoot1017-scaled.jpg",
+    "lubricant 2": "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Prouct-shoot1008-2.jpg",
+    "lubricant 3": "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Prouct-shoot0993-scaled.jpg",
     "engine oil": "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Energy-Oil.jpg",
-    "diesel": "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Prouct-shoot0968-scaled.jpg",
-    "fuel": "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Prouct-shoot1020-scaled.jpg"
+    "fuel 1": "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Prouct-shoot0968-scaled.jpg",
+    "fuel 2": "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Prouct-shoot1020-scaled.jpg"
 }
 
 
@@ -54,13 +56,12 @@ def webhook():
             user_text = message["text"]["body"].strip().lower()
             print(f"💬 Message from {from_number}: {user_text}")
 
-            # Check for product image request
-            for keyword, link in product_links.items():
-                if keyword in user_text or f"send {keyword}" in user_text or f"show {keyword}" in user_text or f"picture of {keyword}" in user_text:
-                    caption = f"Here’s what our {keyword} product looks like ⚡"
-                    send_image(from_number, link, caption)
-                    send_message(from_number, f"Our {keyword} products are top quality and available across all Bucch Energy outlets.")
-                    return jsonify(success=True)
+            # Check for product request
+            if any(keyword in user_text for keyword in product_links.keys()):
+                for product, link in product_links.items():
+                    if product in user_text:
+                        send_image(from_number, link, f"Here’s the image for {product.title()} ⚡")
+                        return jsonify(success=True)
 
             # Otherwise handle as normal chat
             ai_reply = chat_with_ai(user_text, from_number)
@@ -75,7 +76,7 @@ def webhook():
     return jsonify(success=True)
 
 
-# ✅ Send text message
+# ✅ Send text message to WhatsApp
 def send_message(to, message):
     url = f"https://graph.facebook.com/v24.0/{PHONE_NUMBER_ID}/messages"
     headers = {
@@ -96,7 +97,7 @@ def send_message(to, message):
         print("❌ Failed to send message:", e)
 
 
-# ✅ Send image message
+# ✅ Send image to WhatsApp
 def send_image(to, image_url, caption=""):
     url = f"https://graph.facebook.com/v24.0/{PHONE_NUMBER_ID}/messages"
     headers = {
@@ -107,7 +108,10 @@ def send_image(to, image_url, caption=""):
         "messaging_product": "whatsapp",
         "to": to,
         "type": "image",
-        "image": {"link": image_url, "caption": caption}
+        "image": {
+            "link": image_url,
+            "caption": caption
+        }
     }
 
     try:
@@ -117,44 +121,46 @@ def send_image(to, image_url, caption=""):
         print("❌ Failed to send image:", e)
 
 
-# ✅ ChatGPT integration (more natural & stable)
+# ✅ ChatGPT integration with retry & fallback
 def chat_with_ai(prompt, user_id):
     try:
         if user_id not in user_memory:
             user_memory[user_id] = []
 
-        # Add user message
         user_memory[user_id].append({"user": prompt})
 
-        # Use only recent conversation snippets (no “Bot:” prefix)
         history = user_memory[user_id][-5:]
-        history_text = "\n".join([f"User: {h.get('user', '')}" for h in history])
+        history_text = "\n".join(
+            [f"User: {h.get('user', '')}\nBot: {h.get('bot', '')}" for h in history]
+        )
 
-        # Try to fetch live site info
         try:
             site_url = "https://bucchenergy.com"
             html = requests.get(site_url, timeout=10).text
             soup = BeautifulSoup(html, "html.parser")
             website_text = ' '.join(p.get_text() for p in soup.find_all("p"))[:3000]
         except Exception as e:
-            print("⚠️ Website fetch failed:", e)
-            website_text = "Bucch Energy provides high-quality fuels, lubricants, and petroleum services across West Africa."
+            print("⚠ Website fetch failed:", e)
+            website_text = "Bucch Energy provides fuels, lubricants, and petroleum products in West Africa."
 
-        headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json"
+        }
+
         body = {
             "model": "gpt-4o-mini",
             "messages": [
                 {"role": "system", "content": (
-                    "You are PBA.Bucch — a friendly, human-like assistant for Bucch Energy. "
-                    "Speak naturally like a person, not a robot. "
-                    "You can use emojis occasionally and sound casual yet professional. "
-                    f"Here’s info from the company website: {website_text}"
+                    "You are PBA.Bucch — a friendly, conversational, and human-like assistant for Bucch Energy. "
+                    "You reply naturally — no need to prefix with 'Bot' or 'Assistant'. "
+                    "Keep your tone smooth, friendly, and clear. "
+                    "If users ask about products, fuels, or lubricants, explain briefly and sound human."
                 )},
                 {"role": "user", "content": f"{history_text}\n\nUser: {prompt}"}
             ]
         }
 
-        # Retry mechanism
         for i in range(2):
             try:
                 response = requests.post(
@@ -167,16 +173,16 @@ def chat_with_ai(prompt, user_id):
                     user_memory[user_id].append({"bot": reply})
                     return reply
                 else:
-                    print("⚠️ AI incomplete response:", data)
+                    print("⚠ AI incomplete response:", data)
             except Exception as e:
-                print(f"⚠️ AI call failed (try {i+1}):", e)
+                print(f"⚠ AI call failed (try {i+1}):", e)
                 time.sleep(2)
 
-        return "⚡ Sorry, I’m having trouble right now. Please try again!"
+        return "⚡ Sorry, I’m having trouble right now. Please try again."
 
     except Exception as e:
-        print("⚙️ AI error:", e)
-        return "⚡ Sorry, I’m having trouble right now. Please try again!"
+        print("⚙ AI error:", e)
+        return "⚡ Sorry, I’m having trouble right now. Please try again."
 
 
 # ✅ Run Flask app
