@@ -124,20 +124,17 @@ def send_image(to, image_url, caption=""):
 # ✅ ChatGPT integration with retry & fallback
 def chat_with_ai(prompt, user_id):
     try:
-        # Ensure user memory exists
         if user_id not in user_memory:
             user_memory[user_id] = []
 
-        # Add new user message to memory
         user_memory[user_id].append({"user": prompt})
 
-        # Get brief recent context
         history = user_memory[user_id][-5:]
         history_text = "\n".join(
             [f"User: {h.get('user', '')}\nBot: {h.get('bot', '')}" for h in history]
         )
 
-        # Try fetching live website data
+        # Fetch live website data
         try:
             site_url = "https://bucchenergy.com"
             html = requests.get(site_url, timeout=10).text
@@ -152,19 +149,20 @@ def chat_with_ai(prompt, user_id):
             "Content-Type": "application/json"
         }
 
+        # 🔹 Only change: stop “Bot:” or “Assistant:” prefixes
         body = {
             "model": "gpt-4o-mini",
             "messages": [
                 {"role": "system", "content": (
                     "You are PBA.Bucch — a friendly and professional assistant for Bucch Energy. "
-                    "Provide accurate and updated info using the latest website data when possible. "
+                    "Provide accurate, updated info using website data when possible. "
+                    "Never prefix your messages with 'Bot:', 'Assistant:', or anything similar. "
                     f"Reference info: {website_text}"
                 )},
                 {"role": "user", "content": f"{history_text}\n\nUser: {prompt}"}
             ]
         }
 
-        # Small retry mechanism
         for i in range(2):
             try:
                 response = requests.post(
