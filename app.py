@@ -144,7 +144,7 @@ def chat_with_ai(prompt, user_id):
             soup = BeautifulSoup(html, "html.parser")
             website_text = ' '.join(p.get_text() for p in soup.find_all("p"))[:3000]
         except Exception as e:
-            print("⚠ Website fetch failed:", e)
+            print("⚠️ Website fetch failed:", e)
             website_text = "Bucch Energy provides fuels, lubricants, and petroleum products in West Africa."
 
         headers = {
@@ -152,15 +152,13 @@ def chat_with_ai(prompt, user_id):
             "Content-Type": "application/json"
         }
 
-        # 🔹 Only change: updated system message to stop 'Bot:' replies
         body = {
             "model": "gpt-4o-mini",
             "messages": [
                 {"role": "system", "content": (
                     "You are PBA.Bucch — a friendly and professional assistant for Bucch Energy. "
-                    "Respond naturally, like a real person would in a WhatsApp chat. "
-                    "Never prefix your messages with 'Bot:', 'Assistant:', or similar. "
-                    "Keep replies clear, human, and conversational."
+                    "Provide accurate and updated info using the latest website data when possible. "
+                    f"Reference info: {website_text}"
                 )},
                 {"role": "user", "content": f"{history_text}\n\nUser: {prompt}"}
             ]
@@ -177,17 +175,17 @@ def chat_with_ai(prompt, user_id):
                 if "choices" in data:
                     reply = data["choices"][0]["message"]["content"].strip()
                     user_memory[user_id].append({"bot": reply})
-                    return reply
+                    return reply + "\n\n— PBA.Bucch ⚡"
                 else:
-                    print("⚠ AI incomplete response:", data)
+                    print("⚠️ AI incomplete response:", data)
             except Exception as e:
-                print(f"⚠ AI call failed (try {i+1}):", e)
+                print(f"⚠️ AI call failed (try {i+1}):", e)
                 time.sleep(2)
 
         return "⚡ Sorry, I’m having trouble right now. Please try again!"
 
     except Exception as e:
-        print("⚙ AI error:", e)
+        print("⚙️ AI error:", e)
         return "⚡ Sorry, I’m having trouble right now. Please try again!"
 
 
