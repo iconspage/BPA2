@@ -31,7 +31,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-REPLACE_WITH_YOURS")
 # Memory
 # -----------------------------
 user_memory = {}
-user_state = {}
+user_state = {}  # now includes product_select state
 
 # ===============================================================
 # ✅ VERIFIED PRODUCT IMAGES + REAL NAMES (CLEAN, CORRECT)
@@ -68,6 +68,7 @@ product_links = {
     # ✅ Fallback brand image
     "bucch": "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Energy-Oil.jpg"
 }
+
 
 DEFAULT_IMAGE = "https://bucchenergy.com/wp-content/uploads/2025/08/Bucch-Energy-Oil.jpg"
 
@@ -113,7 +114,7 @@ def verify():
 
 
 # ===============================================================
-# ✅ WEBHOOK RECEIVER — ONLY IMAGE DETECTION UPDATED
+# ✅ WEBHOOK RECEIVER — NEW FEATURE ADDED HERE
 # ===============================================================
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -128,37 +129,67 @@ def webhook():
         message = messages[0]
         from_number = message["from"]
 
+        # Ensure state
         user_memory.setdefault(from_number, [])
-        user_state.setdefault(from_number, {"stage": None, "order": {}})
+        user_state.setdefault(from_number, {"stage": None, "order": {}, "product_select": None})
 
         if message["type"] == "text":
             user_text = message["text"]["body"].lower().strip()
             print("User said:", user_text)
 
             # ======================================================
-            # ✅ SMART PRODUCT IMAGE DETECTION
+            # ✅ 1) NEW FEATURE: Detect ANY picture/photo request
             # ======================================================
-            image_request_words = ("picture", "photo", "image", "show", "see", "view")
+            trigger_words = ("picture", "photo", "image", "show", "see", "view")
 
-            # ✅ DIRECT KEYWORD MATCH
-            for keyword, link in product_links.items():
-                if keyword in user_text:
+            if any(w in user_text for w in trigger_words):
+                user_state[from_number]["product_select"] = "awaiting_choice"
 
-                    label = get_clean_label(keyword)
-                    send_image(from_number, link, f"{label} — Bucch Energy ⚡")
-                    return jsonify(success=True)
+                # Build the numbered product list
+                product_list = "\n".join(
+                    [f"{i+1}. {name.title()}" for i, name in enumerate(product_links.keys())]
+                )
 
-            # ✅ NATURAL LANGUAGE DETECTION
-            if any(w in user_text for w in image_request_words):
-                for keyword, link in product_links.items():
-                    # Look for partial word matches
-                    if any(part in user_text for part in keyword.split()):
-                        label = get_clean_label(keyword)
-                        send_image(from_number, link, f"{label} — Bucch Energy ⚡")
+                send_message(
+                    from_number,
+                    "Sure! Which product picture would you like to see?\n\n"
+                    "Reply with the **number** or the **product name**:\n\n"
+                    f"{product_list}"
+                )
+                return jsonify(success=True)
+
+            # ======================================================
+            # ✅ 2) If user is selecting from the list
+            # ======================================================
+            if user_state[from_number]["product_select"] == "awaiting_choice":
+
+                products = list(product_links.keys())
+
+                # User chose by number
+                if user_text.isdigit():
+                    idx = int(user_text) - 1
+                    if 0 <= idx < len(products):
+                        chosen = products[idx]
+                        link = product_links[chosen]
+                        send_image(from_number, link, f"{chosen.title()} — Bucch Energy ⚡")
+                        user_state[from_number]["product_select"] = None
+                        return jsonify(success=True)
+                    else:
+                        send_message(from_number, "❌ Invalid number. Try again.")
                         return jsonify(success=True)
 
+                # User chose by name
+                for key in products:
+                    if key in user_text:
+                        send_image(from_number, product_links[key], f"{key.title()} — Bucch Energy ⚡")
+                        user_state[from_number]["product_select"] = None
+                        return jsonify(success=True)
+
+                send_message(from_number, "❌ Not found. Please enter a number or product name.")
+                return jsonify(success=True)
+
             # ======================================================
-            # ✅ ORDER FLOW (UNCHANGED)
+            # ✅ 3) ORDER FLOW (UNCHANGED)
             # ======================================================
             state = user_state[from_number]
             if state["stage"]:
@@ -166,12 +197,12 @@ def webhook():
                 return jsonify(success=True)
 
             if user_text in ("order", "place an order", "i want to order", "place order"):
-                user_state[from_number] = {"stage": "ask_product", "order": {"user_id": from_number}}
+                user_state[from_number] = {"stage": "ask_product", "order": {"user_id": from_number}, "product_select": None}
                 send_message(from_number, "Sure — what product would you like to order?")
                 return jsonify(success=True)
 
             # ======================================================
-            # ✅ NORMAL CHAT
+            # ✅ 4) NORMAL CHAT
             # ======================================================
             ai_reply = chat_with_ai(user_text, from_number)
             send_message(from_number, ai_reply)
@@ -186,7 +217,7 @@ def webhook():
 
 
 # ===============================================================
-# ✅ CLEAN LABEL FUNCTION (Real product names)
+# ✅ CLEAN LABEL FUNCTION (unchanged)
 # ===============================================================
 def get_clean_label(keyword):
 
@@ -211,7 +242,7 @@ def get_clean_label(keyword):
 
 
 # ===============================================================
-# ✅ ORDER STATE MACHINE — UNCHANGED
+# ✅ ORDER SYSTEM — UNCHANGED
 # ===============================================================
 def handle_order_message(user_id, text):
 
@@ -220,7 +251,7 @@ def handle_order_message(user_id, text):
     order = state["order"]
 
     if text == "cancel":
-        user_state[user_id] = {"stage": None, "order": {}}
+        user_state[user_id] = {"stage": None, "order": {}, "product_select": None}
         send_message(user_id, "✅ Order cancelled.")
         return
 
@@ -274,11 +305,11 @@ def handle_order_message(user_id, text):
         if text == "confirm":
             send_order_email(order)
             send_message(user_id, "✅ Order placed! Our sales team will contact you.")
-        user_state[user_id] = {"stage": None, "order": {}}
+        user_state[user_id] = {"stage": None, "order": {}, "product_select": None}
 
 
 # ===============================================================
-# ✅ WHATSAPP SENDERS — UNCHANGED
+# ✅ SEND WHATSAPP MSG
 # ===============================================================
 def send_message(to, message):
     url = f"https://graph.facebook.com/v24.0/{PHONE_NUMBER_ID}/messages"
@@ -295,6 +326,9 @@ def send_message(to, message):
         print("Send text error:", e)
 
 
+# ===============================================================
+# ✅ SEND WHATSAPP IMAGE
+# ===============================================================
 def send_image(to, link, caption=""):
     url = f"https://graph.facebook.com/v24.0/{PHONE_NUMBER_ID}/messages"
     headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
@@ -311,7 +345,7 @@ def send_image(to, link, caption=""):
 
 
 # ===============================================================
-# ✅ AI Chat — UNCHANGED
+# ✅ AI CHAT — UNCHANGED
 # ===============================================================
 def chat_with_ai(prompt, user_id):
     try:
